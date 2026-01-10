@@ -13,10 +13,10 @@ def _utc_timestamp_for_filename() -> str:
 
 def save_snapshot(snapshot: dict[str, Any]) -> str:
     """
-    Save a JSON-serializable snapshot to:
+    save a json serializable snapshot to
       snapshots/<provider>/<account_or_subscription>/<timestamp>.json
 
-    Also writes/overwrites:
+    also writes/overwrites:
       snapshots/latest.json  (contains the path to the latest snapshot)
     """
     provider = (snapshot.get("metadata", {}).get("provider") or "unknown").lower()

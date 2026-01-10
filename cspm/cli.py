@@ -49,6 +49,8 @@ def scan_aws(regions: list[str]):
     print(f"\n[+] Report written to {report_path}")
     print("[*] Scan complete")
 
+    
+
 
 def main():
     # parse command/options
@@ -69,12 +71,33 @@ def main():
         default=["us-west-1"],
         help="AWS regions to scan (default: us-west-1)",
     )
+    scan_parser.add_argument(
+        "--demo",
+        action="store_true",
+        help="Run using a local sample snapshot (no AWS required)",
+    )
 
     args = parser.parse_args()
 
     if args.command == "scan":
         if args.provider == "aws":
-            scan_aws(regions=args.regions)
+            if getattr(args, "demo", False):
+                from pathlib import Path
+                import json
+
+                project_root = Path(__file__).resolve().parent
+                sample_path = project_root / "samples" / "sample_snapshot_aws.json"
+                snapshot = json.loads(sample_path.read_text(encoding="utf-8"))
+
+                snapshot_path = save_snapshot(snapshot)
+                findings = run_aws_rules(snapshot)
+                scored = score_findings(findings)
+                scored.sort(key=lambda f: f["risk_score"], reverse=True)
+                report_path = render_html_report(snapshot=snapshot, findings=scored)
+                print(f"[+] Demo snapshot saved to {snapshot_path}")
+                print(f"[+] Demo report written to {report_path}")
+            else:
+                scan_aws(regions=args.regions)
         else:
             parser.error("Provider not supported yet.")
 

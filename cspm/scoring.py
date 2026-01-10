@@ -22,6 +22,7 @@ def score_findings(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
         severity_value = _to_int(finding.get("severity"), default=50)
         # evidence -> string for marker checks
         evidence_text = str(finding.get("evidence") or "")
+        is_public = bool(finding.get("is_public") is True)
 
         # add a fixed bonus if evidence shows world exposure
         exposure_bonus = 20 if _is_world_exposed(evidence_text) else 0
