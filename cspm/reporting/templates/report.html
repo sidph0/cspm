@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Local CSPM Lite Report</title>
+  <style>
+    /* basic layout and typography */
+    body { font-family: Arial, sans-serif; margin: 24px; }
+    .muted { color: #666; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #eee; font-size: 12px; }
+
+    /* table layout */
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th, td { border: 1px solid #ddd; padding: 8px; vertical-align: top; }
+    th { background: #f7f7f7; text-align: left; }
+
+    /* utility classes */
+    .right { text-align: right; }
+    .mono { font-family: Consolas, monospace; font-size: 12px; }
+    .section { margin-top: 24px; }
+  </style>
+</head>
+<body>
+
+  <!-- Page header + generation timestamp -->
+  <h1>Local CSPM Lite</h1>
+  <p class="muted">Generated: <span class="mono">{{ generated_at }}</span></p>
+
+  <!--
+    Scan Metadata
+    - `snapshot.metadata` expected fields: provider, account_id, regions (list), collected_at_utc
+  -->
+  <div class="section">
+    <h2>Scan Metadata</h2>
+    <ul>
+      <li>Provider: <span class="pill">{{ snapshot.metadata.provider }}</span></li>
+      <li>AWS Account: <span class="mono">{{ snapshot.metadata.account_id }}</span></li>
+      <li>Regions: <span class="mono">{{ snapshot.metadata.regions | join(", ") }}</span></li>
+      <li>Collected (UTC): <span class="mono">{{ snapshot.metadata.collected_at_utc }}</span></li>
+    </ul>
+  </div>
+
+  <!-- collected inventory overview -->
+  <div class="section">
+    <h2>Collected Inventory</h2>
+
+    <!-- security groups per region -->
+    <h3>Security Groups (by region)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Region</th>
+          <th class="right">Security Groups</th>
+          <th>Collector Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        {# Loop over regions collected under snapshot.aws.regions #}
+        {% for region, data in snapshot.aws.regions.items() %}
+          <tr>
+            <td class="mono">{{ region }}</td>
+            <td class="right">
+              <!-- If there is a security_groups list, show its length; otherwise 0 -->
+              <strong>{{ (data.security_groups | length) if data.security_groups else 0 }}</strong>
+            </td>
+            <td class="mono">
+              {# Show collector error details when present; otherwise a simple OK #}
+              {% if data.error %}
+                ERROR: {{ data.error.type }} - {{ data.error.message }}
+              {% else %}
+                OK
+              {% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <!-- s3 buckets summary -->
+    <h3>S3 Buckets</h3>
+    {# Safely resolve buckets; keep behavior identical to previous logic #}
+    {% set buckets = snapshot.aws.s3.buckets if snapshot.aws.s3 and snapshot.aws.s3.buckets else [] %}
+    <p>Total buckets collected: <strong>{{ buckets | length }}</strong></p>
+
+    {% if buckets | length > 0 %}
+      <table>
+        <thead>
+          <tr>
+            <th>Bucket</th>
+            <th>Region</th>
+            <th>Public Access Block</th>
+            <th>Policy Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          {# Limit shown rows to first 25 for brevity #}
+          {% for b in buckets[:25] %}
+            <tr>
+              <td class="mono">{{ b.name }}</td>
+              <td class="mono">{{ b.region if b.region else "unknown" }}</td>
+              <td class="mono">
+                {# public_access_block truthiness indicates presence #}
+                {% if b.public_access_block %}
+                  present
+                {% else %}
+                  missing/unknown
+                {% endif %}
+              </td>
+              <td class="mono">
+                {# policy_status may be nested; print IsPublic when available #}
+                {% if b.policy_status and b.policy_status.PolicyStatus %}
+                  IsPublic={{ b.policy_status.PolicyStatus.IsPublic }}
+                {% else %}
+                  none/unknown
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% if buckets | length > 25 %}
+        <p class="muted">Showing first 25 buckets.</p>
+      {% endif %}
+    {% endif %}
+  </div>
+
+  <!-- Findings list -->
+  <div class="section">
+    <h2>Findings ({{ findings | length }})</h2>
+
+    {% if findings | length == 0 %}
+      <p>No misconfigurations found.</p>
+    {% else %}
+      <table>
+        <thead>
+          <tr>
+            <th class="right">Risk</th>
+            <th>Rule</th>
+            <th>Resource</th>
+            <th>Region</th>
+            <th>Evidence</th>
+          </tr>
+        </thead>
+        <tbody>
+          {# One row per finding; fields expected on each `f` object #}
+          {% for f in findings %}
+            <tr>
+              <td class="right"><strong>{{ f.risk_score }}</strong></td>
+              <td class="mono">{{ f.rule_id }}</td>
+              <td class="mono">{{ f.resource_id }}</td>
+              <td class="mono">{{ f.region }}</td>
+              <td class="mono">{{ f.evidence }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </div>
+
+</body>
+</html>
