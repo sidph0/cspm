@@ -155,4 +155,5 @@ reports/
 ## Disclaimer
 
 This project is for educational and portfolio purposes
+
 Always review findings before making changes in production environments.
