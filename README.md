@@ -75,6 +75,7 @@ cd cspm
 
 ### 2. Create and activate a virtual environment
 ```powershell
+python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 ```
 
