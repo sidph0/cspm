@@ -1,0 +1,50 @@
+{
+  "metadata": {
+    "provider": "aws",
+    "account_id": "000000000000",
+    "collected_at_utc": "2026-01-01T00:00:00+00:00",
+    "regions": ["us-east-1"]
+  },
+  "aws": {
+    "regions": {
+      "us-east-1": {
+        "security_groups": [
+          {
+            "group_id": "sg-demo123",
+            "group_name": "demo-open-sg",
+            "description": "Demo SG (previous) - only SSH open",
+            "vpc_id": "vpc-demo123",
+            "ip_permissions": [
+              {
+                "IpProtocol": "tcp",
+                "FromPort": 22,
+                "ToPort": 22,
+                "IpRanges": [{"CidrIp": "0.0.0.0/0", "Description": "demo open ssh"}],
+                "Ipv6Ranges": []
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "s3": {
+      "buckets": [
+        {
+          "name": "demo-bucket-private-ish",
+          "region": "us-east-1",
+          "public_access_block": {
+            "PublicAccessBlockConfiguration": {
+              "BlockPublicAcls": true,
+              "IgnorePublicAcls": true,
+              "BlockPublicPolicy": true,
+              "RestrictPublicBuckets": true
+            }
+          },
+          "policy_status": {
+            "PolicyStatus": { "IsPublic": false }
+          }
+        }
+      ]
+    }
+  }
+}

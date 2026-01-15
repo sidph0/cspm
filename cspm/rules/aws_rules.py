@@ -12,6 +12,7 @@ WORLD_IPV6 = "::/0"
 def run_aws_rules(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
     """
     AWS rules:
+      - SG: SSH open to ANY (used for risk drift as public vs private changes risk)
       - SG: SSH open to world
       - SG: RDP open to world
       - SG: ALL traffic open to world
@@ -37,6 +38,26 @@ def run_aws_rules(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
             sg_id = sg.get("group_id") or "unknown-sg"
             perms = sg.get("ip_permissions", []) or []
 
+            # -------------------------
+            # SSH open to ANY (show risk drift)
+            # persists across scans even if CIDR changes so risk can increase / decrease
+            # -------------------------
+            ssh_any = _sg_find_port_any_cidr(perms, 22)
+            if ssh_any is not None:
+                cidr, evidence = ssh_any
+                findings.append(
+                    _make_finding(
+                        rule_id="AWS_SG_INGRESS_SSH_ANY",
+                        region=region,
+                        resource_type="security_group",
+                        resource_id=sg_id,
+                        evidence=f"{evidence} (cidr={cidr})",
+                        severity=70,
+                        is_public=_is_world_cidr(cidr),
+                    )
+                )
+
+            # existing - SSH open to world
             if _sg_allows_port_from_world(perms, 22):
                 findings.append(
                     _make_finding(
@@ -149,6 +170,11 @@ def _make_finding(
 # -------------------------
 # SG helpers
 # -------------------------
+def _is_world_cidr(cidr: str) -> bool:
+    c = (cidr or "").strip()
+    return c == WORLD_IPV4 or c == WORLD_IPV6
+
+
 def _sg_allows_port_from_world(ip_permissions: list[dict[str, Any]], port: int) -> bool:
     # `ip_permissions` follows aws DescribeSecurityGroups IpPermissions shape
     for perm in ip_permissions:
@@ -164,6 +190,36 @@ def _sg_allows_port_from_world(ip_permissions: list[dict[str, Any]], port: int) 
                 return True
 
     return False
+
+
+def _sg_find_port_any_cidr(ip_permissions: list[dict[str, Any]], port: int) -> tuple[str, str] | None:
+    """
+    return (cidr, evidence) for the first cidr rule found that allows the port
+    (check ipv4 then ipv6, used for SSH_ANY rule to show drift)
+    """
+    for perm in ip_permissions:
+        if not _perm_matches_port(perm, port):
+            continue
+
+        proto = perm.get("IpProtocol")
+        from_port = perm.get("FromPort")
+        to_port = perm.get("ToPort")
+
+        for r in perm.get("IpRanges", []) or []:
+            cidr = (r.get("CidrIp") or "").strip()
+            if cidr:
+                desc = (r.get("Description") or "").strip()
+                ev = _fmt_sg_evidence(proto, from_port, to_port, cidr, desc)
+                return cidr, ev
+
+        for r in perm.get("Ipv6Ranges", []) or []:
+            cidr = (r.get("CidrIpv6") or "").strip()
+            if cidr:
+                desc = (r.get("Description") or "").strip()
+                ev = _fmt_sg_evidence(proto, from_port, to_port, cidr, desc)
+                return cidr, ev
+
+    return None
 
 
 def _sg_allows_all_traffic_from_world(ip_permissions: list[dict[str, Any]]) -> bool:

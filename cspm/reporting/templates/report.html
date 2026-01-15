@@ -27,10 +27,6 @@
   <h1>Local CSPM Lite</h1>
   <p class="muted">Generated: <span class="mono">{{ generated_at }}</span></p>
 
-  <!--
-    Scan Metadata
-    - `snapshot.metadata` expected fields: provider, account_id, regions (list), collected_at_utc
-  -->
   <div class="section">
     <h2>Scan Metadata</h2>
     <ul>
@@ -155,6 +151,153 @@
           {% endfor %}
         </tbody>
       </table>
+    {% endif %}
+  </div>
+
+  <!-- drift section -->
+  <div class="section">
+    <h2>Drift (vs previous scan)</h2>
+
+    {% if drift and drift.available %}
+      <p class="muted">
+        Previous snapshot: <span class="mono">{{ drift.previous_snapshot_path }}</span><br />
+        Latest snapshot: <span class="mono">{{ drift.latest_snapshot_path }}</span>
+      </p>
+
+      <ul>
+        <li>New findings: <strong>{{ drift.diff.new | length }}</strong></li>
+        <li>Resolved findings: <strong>{{ drift.diff.resolved | length }}</strong></li>
+        <li>Persisting findings: <strong>{{ drift.diff.persisting | length }}</strong></li>
+        <li>Risk increased: <strong>{{ drift.diff.increased_risk | length }}</strong></li>
+        <li>Risk decreased: <strong>{{ drift.diff.decreased_risk | length }}</strong></li>
+      </ul>
+
+      <h3>New Findings</h3>
+      {% if drift.diff.new | length == 0 %}
+        <p>No new findings.</p>
+      {% else %}
+        <table>
+          <thead>
+            <tr>
+              <th class="right">Risk</th>
+              <th>Rule</th>
+              <th>Resource</th>
+              <th>Region</th>
+              <th>Evidence</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in drift.diff.new[:15] %}
+              <tr>
+                <td class="right"><strong>{{ f.risk_score }}</strong></td>
+                <td class="mono">{{ f.rule_id }}</td>
+                <td class="mono">{{ f.resource_id }}</td>
+                <td class="mono">{{ f.region }}</td>
+                <td class="mono">{{ f.evidence }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% if drift.diff.new | length > 15 %}
+          <p class="muted">Showing first 15 new findings.</p>
+        {% endif %}
+      {% endif %}
+
+      <h3>Resolved Findings</h3>
+      {% if drift.diff.resolved | length == 0 %}
+        <p>No resolved findings.</p>
+      {% else %}
+        <table>
+          <thead>
+            <tr>
+              <th class="right">Prev Risk</th>
+              <th>Rule</th>
+              <th>Resource</th>
+              <th>Region</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in drift.diff.resolved[:15] %}
+              <tr>
+                <td class="right"><strong>{{ f.risk_score }}</strong></td>
+                <td class="mono">{{ f.rule_id }}</td>
+                <td class="mono">{{ f.resource_id }}</td>
+                <td class="mono">{{ f.region }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% if drift.diff.resolved | length > 15 %}
+          <p class="muted">Showing first 15 resolved findings.</p>
+        {% endif %}
+      {% endif %}
+
+      <h3>Risk Increased</h3>
+      {% if drift.diff.increased_risk | length == 0 %}
+        <p>No increased-risk findings.</p>
+      {% else %}
+        <table>
+          <thead>
+            <tr>
+              <th class="right">Before</th>
+              <th class="right">After</th>
+              <th>Rule</th>
+              <th>Resource</th>
+              <th>Region</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for x in drift.diff.increased_risk[:15] %}
+              <tr>
+                <td class="right">{{ x.before_risk }}</td>
+                <td class="right"><strong>{{ x.after_risk }}</strong></td>
+                <td class="mono">{{ x.after.rule_id }}</td>
+                <td class="mono">{{ x.after.resource_id }}</td>
+                <td class="mono">{{ x.after.region }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% if drift.diff.increased_risk | length > 15 %}
+          <p class="muted">Showing first 15 increased-risk items.</p>
+        {% endif %}
+      {% endif %}
+
+      <h3>Risk Decreased</h3>
+      {% if drift.diff.decreased_risk | length == 0 %}
+        <p>No decreased-risk findings.</p>
+      {% else %}
+        <table>
+          <thead>
+            <tr>
+              <th class="right">Before</th>
+              <th class="right">After</th>
+              <th>Rule</th>
+              <th>Resource</th>
+              <th>Region</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for x in drift.diff.decreased_risk[:15] %}
+              <tr>
+                <td class="right">{{ x.before_risk }}</td>
+                <td class="right"><strong>{{ x.after_risk }}</strong></td>
+                <td class="mono">{{ x.after.rule_id }}</td>
+                <td class="mono">{{ x.after.resource_id }}</td>
+                <td class="mono">{{ x.after.region }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% if drift.diff.decreased_risk | length > 15 %}
+          <p class="muted">Showing first 15 decreased-risk items.</p>
+        {% endif %}
+      {% endif %}
+
+    {% else %}
+      <p class="muted">
+        Drift is not available yet. Run at least <strong>two scans</strong> to compare changes.
+      </p>
     {% endif %}
   </div>
 
