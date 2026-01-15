@@ -70,7 +70,7 @@ It scans AWS cloud configurations, detects common misconfigurations, assigns ris
 ### 1. Clone the repository
 ```powershell
 git clone https://github.com/sidph0/cspm.git
-cd local-cspm-lite
+cd cspm
 ```
 
 ### 2. Create and activate a virtual environment
