@@ -1,12 +1,53 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Optional
 
 
 # known CIDR (IPv4/IPv6) values
 WORLD_IPV4 = "0.0.0.0/0"
 WORLD_IPV6 = "::/0"
+
+# rule permission requirements: map rule_id -> (service, action)
+# note - rules require all listed permissions to be available for evaluation
+RULE_PERMISSIONS: dict[str, list[tuple[str, str]]] = {
+    "AWS_SG_INGRESS_SSH_ANY": [("ec2", "DescribeSecurityGroups")],
+    "AWS_SG_INGRESS_SSH_WORLD": [("ec2", "DescribeSecurityGroups")],
+    "AWS_SG_INGRESS_RDP_WORLD": [("ec2", "DescribeSecurityGroups")],
+    "AWS_SG_INGRESS_ALL_WORLD": [("ec2", "DescribeSecurityGroups")],
+    "AWS_S3_PUBLIC_ACCESS_BLOCK_DISABLED": [("s3", "ListBuckets"), ("s3", "GetPublicAccessBlock")],
+    # GetBucketPolicyStatus is preferred but GetBucketPolicy can be also be used as fallback heuristic
+    # need GetBucketPolicyStatus since it's the authoritative source
+    "AWS_S3_BUCKET_POLICY_PUBLIC": [("s3", "ListBuckets"), ("s3", "GetBucketPolicyStatus")],
+}
+
+
+def _check_permissions_available(
+    coverage: dict[str, Any], required_permissions: list[tuple[str, str]]
+) -> tuple[bool, Optional[str]]:
+    """
+    check if all required permissions are available in coverage.
+    
+    returns:
+        (is_available, missing_permission)
+        - is_available - true if all permissions are fine
+        - missing_permission - none if available, otherwise service:action format
+    """
+    if not coverage or not isinstance(coverage, dict):
+        if required_permissions:
+            return False, f"{required_permissions[0][0]}:{required_permissions[0][1]}"
+        return True, None
+    
+    for service, action in required_permissions:
+        service_data = coverage.get(service)
+        if not isinstance(service_data, dict):
+            return False, f"{service}:{action}"
+        
+        action_data = service_data.get(action)
+        if not isinstance(action_data, dict) or action_data.get("status") != "OK":
+            return False, f"{service}:{action}"
+    
+    return True, None
 
 
 def run_aws_rules(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
@@ -23,6 +64,7 @@ def run_aws_rules(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
 
     aws = snapshot.get("aws", {})
     regions = aws.get("regions", {})
+    coverage = aws.get("coverage", {})
 
     # -------------------------
     # Security Group rules
@@ -42,26 +84,55 @@ def run_aws_rules(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
             # SSH open to ANY (show risk drift)
             # persists across scans even if CIDR changes so risk can increase / decrease
             # -------------------------
-            ssh_any = _sg_find_port_any_cidr(perms, 22)
-            if ssh_any is not None:
-                cidr, evidence = ssh_any
+            rule_id = "AWS_SG_INGRESS_SSH_ANY"
+            required_perms = RULE_PERMISSIONS.get(rule_id, [])
+            has_perms, missing_perm = _check_permissions_available(coverage, required_perms)
+            
+            if not has_perms:
                 findings.append(
-                    _make_finding(
-                        rule_id="AWS_SG_INGRESS_SSH_ANY",
+                    _make_not_evaluated_finding(
+                        rule_id=rule_id,
                         region=region,
                         resource_type="security_group",
                         resource_id=sg_id,
-                        evidence=f"{evidence} (cidr={cidr})",
-                        severity=70,
-                        is_public=_is_world_cidr(cidr),
+                        missing_permission=missing_perm or "unknown",
                     )
                 )
+            else:
+                ssh_any = _sg_find_port_any_cidr(perms, 22)
+                if ssh_any is not None:
+                    cidr, evidence = ssh_any
+                    findings.append(
+                        _make_finding(
+                            rule_id=rule_id,
+                            region=region,
+                            resource_type="security_group",
+                            resource_id=sg_id,
+                            evidence=f"{evidence} (cidr={cidr})",
+                            severity=70,
+                            is_public=_is_world_cidr(cidr),
+                        )
+                    )
 
             # existing - SSH open to world
-            if _sg_allows_port_from_world(perms, 22):
+            rule_id = "AWS_SG_INGRESS_SSH_WORLD"
+            required_perms = RULE_PERMISSIONS.get(rule_id, [])
+            has_perms, missing_perm = _check_permissions_available(coverage, required_perms)
+            
+            if not has_perms:
+                findings.append(
+                    _make_not_evaluated_finding(
+                        rule_id=rule_id,
+                        region=region,
+                        resource_type="security_group",
+                        resource_id=sg_id,
+                        missing_permission=missing_perm or "unknown",
+                    )
+                )
+            elif _sg_allows_port_from_world(perms, 22):
                 findings.append(
                     _make_finding(
-                        rule_id="AWS_SG_INGRESS_SSH_WORLD",
+                        rule_id=rule_id,
                         region=region,
                         resource_type="security_group",
                         resource_id=sg_id,
@@ -72,10 +143,24 @@ def run_aws_rules(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
                 )
 
             # RDP
-            if _sg_allows_port_from_world(perms, 3389):
+            rule_id = "AWS_SG_INGRESS_RDP_WORLD"
+            required_perms = RULE_PERMISSIONS.get(rule_id, [])
+            has_perms, missing_perm = _check_permissions_available(coverage, required_perms)
+            
+            if not has_perms:
+                findings.append(
+                    _make_not_evaluated_finding(
+                        rule_id=rule_id,
+                        region=region,
+                        resource_type="security_group",
+                        resource_id=sg_id,
+                        missing_permission=missing_perm or "unknown",
+                    )
+                )
+            elif _sg_allows_port_from_world(perms, 3389):
                 findings.append(
                     _make_finding(
-                        rule_id="AWS_SG_INGRESS_RDP_WORLD",
+                        rule_id=rule_id,
                         region=region,
                         resource_type="security_group",
                         resource_id=sg_id,
@@ -86,10 +171,24 @@ def run_aws_rules(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
                 )
 
             # any protocol/port allowed from 0.0.0.0/0 or ::/0
-            if _sg_allows_all_traffic_from_world(perms):
+            rule_id = "AWS_SG_INGRESS_ALL_WORLD"
+            required_perms = RULE_PERMISSIONS.get(rule_id, [])
+            has_perms, missing_perm = _check_permissions_available(coverage, required_perms)
+            
+            if not has_perms:
+                findings.append(
+                    _make_not_evaluated_finding(
+                        rule_id=rule_id,
+                        region=region,
+                        resource_type="security_group",
+                        resource_id=sg_id,
+                        missing_permission=missing_perm or "unknown",
+                    )
+                )
+            elif _sg_allows_all_traffic_from_world(perms):
                 findings.append(
                     _make_finding(
-                        rule_id="AWS_SG_INGRESS_ALL_WORLD",
+                        rule_id=rule_id,
                         region=region,
                         resource_type="security_group",
                         resource_id=sg_id,
@@ -110,36 +209,68 @@ def run_aws_rules(snapshot: dict[str, Any]) -> list[dict[str, Any]]:
         bucket_name = b.get("name") or "unknown-bucket"
         bucket_region = b.get("region") or "unknown-region"
 
-        pab = b.get("public_access_block")  # dict or None
-        # if PublicAccessBlock is missing or not fully restrictive then flag it
-        if _public_access_block_is_missing_or_not_blocking(pab):
+        # S3 Public Access Block rule
+        rule_id = "AWS_S3_PUBLIC_ACCESS_BLOCK_DISABLED"
+        required_perms = RULE_PERMISSIONS.get(rule_id, [])
+        has_perms, missing_perm = _check_permissions_available(coverage, required_perms)
+        
+        if not has_perms:
             findings.append(
-                _make_finding(
-                    rule_id="AWS_S3_PUBLIC_ACCESS_BLOCK_DISABLED",
+                _make_not_evaluated_finding(
+                    rule_id=rule_id,
                     region=bucket_region,
                     resource_type="s3_bucket",
                     resource_id=bucket_name,
-                    evidence=_build_s3_pab_evidence(pab),
-                    severity=80,
-                    is_public=True,  # shows increased exposure risk
+                    missing_permission=missing_perm or "unknown",
                 )
             )
+        else:
+            pab = b.get("public_access_block")  # dict or None
+            # if PublicAccessBlock is missing or not fully restrictive then flag it
+            if _public_access_block_is_missing_or_not_blocking(pab):
+                findings.append(
+                    _make_finding(
+                        rule_id=rule_id,
+                        region=bucket_region,
+                        resource_type="s3_bucket",
+                        resource_id=bucket_name,
+                        evidence=_build_s3_pab_evidence(pab),
+                        severity=80,
+                        is_public=True,  # shows increased exposure risk
+                    )
+                )
 
-        # prefer aws provided policy status if present
-        policy_status = b.get("policy_status")
-        # either explicit policy status from AWS or a heuristic
-        if _policy_status_is_public(policy_status) or _policy_looks_public(b.get("policy")):
+        # S3 Bucket Policy Public rule
+        rule_id = "AWS_S3_BUCKET_POLICY_PUBLIC"
+        required_perms = RULE_PERMISSIONS.get(rule_id, [])
+        has_perms, missing_perm = _check_permissions_available(coverage, required_perms)
+        
+        if not has_perms:
             findings.append(
-                _make_finding(
-                    rule_id="AWS_S3_BUCKET_POLICY_PUBLIC",
+                _make_not_evaluated_finding(
+                    rule_id=rule_id,
                     region=bucket_region,
                     resource_type="s3_bucket",
                     resource_id=bucket_name,
-                    evidence=_build_s3_policy_evidence(policy_status, b.get("policy")),
-                    severity=85,
-                    is_public=True,
+                    missing_permission=missing_perm or "unknown",
                 )
             )
+        else:
+            # prefer aws provided policy status if present
+            policy_status = b.get("policy_status")
+            # either explicit policy status from AWS or a heuristic
+            if _policy_status_is_public(policy_status) or _policy_looks_public(b.get("policy")):
+                findings.append(
+                    _make_finding(
+                        rule_id=rule_id,
+                        region=bucket_region,
+                        resource_type="s3_bucket",
+                        resource_id=bucket_name,
+                        evidence=_build_s3_policy_evidence(policy_status, b.get("policy")),
+                        severity=85,
+                        is_public=True,
+                    )
+                )
 
     return findings
 
@@ -164,6 +295,32 @@ def _make_finding(
         "severity": severity,
         "evidence": evidence,
         "is_public": bool(is_public),
+        "status": "EVALUATED",  # normal finding
+    }
+
+
+def _make_not_evaluated_finding(
+    *,
+    rule_id: str,
+    region: str,
+    resource_type: str,
+    resource_id: str,
+    missing_permission: str,
+) -> dict[str, Any]:
+    """
+    create finding record for a rule that cant be evaluated due to missing perms
+    """
+    return {
+        "provider": "aws",
+        "rule_id": rule_id,
+        "resource_type": resource_type,
+        "resource_id": resource_id,
+        "region": region,
+        "severity": 0,  # not useful for not evaluated findings
+        "evidence": f"Rule not evaluated: missing permission {missing_permission}",
+        "is_public": False,
+        "status": "NOT_EVALUATED",
+        "missing_permission": missing_permission,
     }
 
 
