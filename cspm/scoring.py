@@ -14,10 +14,17 @@ def score_findings(findings: list[dict[str, Any]]) -> list[dict[str, Any]]:
       risk_score = severity + exposure_bonus
       exposure_bonus = 20 if evidence suggests world exposure
       clamp to [0, 100]
+    
+    not_evaluated findings keep their existing risk_score (typically 0)
     """
     scored: list[dict[str, Any]] = []
 
     for finding in findings:
+        # skip scoring for not_evaluated findings - they already have a risk score of 0
+        if finding.get("status") == "NOT_EVALUATED":
+            scored.append(dict(finding))  # copy as is
+            continue
+        
         # use provided severity when possible otherwise default to 50
         severity_value = _to_int(finding.get("severity"), default=50)
         # evidence -> string for marker checks
