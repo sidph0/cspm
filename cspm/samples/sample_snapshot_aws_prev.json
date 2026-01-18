@@ -3,23 +3,43 @@
     "provider": "aws",
     "account_id": "000000000000",
     "collected_at_utc": "2026-01-01T00:00:00+00:00",
-    "regions": ["us-east-1"]
+    "regions": ["us-west-1"]
   },
   "aws": {
+    "coverage": {
+      "sts": {
+        "GetCallerIdentity": { "status": "OK" }
+      },
+      "ec2": {
+        "DescribeSecurityGroups": { "status": "OK" }
+      },
+      "s3": {
+        "ListBuckets": { "status": "OK" },
+        "GetBucketLocation": { "status": "OK" },
+        "GetPublicAccessBlock": { "status": "OK" },
+        "GetBucketPolicyStatus": { "status": "OK" },
+        "GetBucketPolicy": { "status": "OK" }
+      }
+    },
     "regions": {
-      "us-east-1": {
+      "us-west-1": {
         "security_groups": [
           {
             "group_id": "sg-demo123",
             "group_name": "demo-open-sg",
-            "description": "Demo SG (previous) - only SSH open",
+            "description": "Demo SG (previous) - SSH open to private CIDR",
             "vpc_id": "vpc-demo123",
             "ip_permissions": [
               {
                 "IpProtocol": "tcp",
                 "FromPort": 22,
                 "ToPort": 22,
-                "IpRanges": [{"CidrIp": "0.0.0.0/0", "Description": "demo open ssh"}],
+                "IpRanges": [
+                  {
+                    "CidrIp": "10.0.0.0/8",
+                    "Description": "demo ssh private range"
+                  }
+                ],
                 "Ipv6Ranges": []
               }
             ]
@@ -31,7 +51,7 @@
       "buckets": [
         {
           "name": "demo-bucket-private-ish",
-          "region": "us-east-1",
+          "region": "us-west-1",
           "public_access_block": {
             "PublicAccessBlockConfiguration": {
               "BlockPublicAcls": true,
@@ -41,7 +61,9 @@
             }
           },
           "policy_status": {
-            "PolicyStatus": { "IsPublic": false }
+            "PolicyStatus": {
+              "IsPublic": false
+            }
           }
         }
       ]

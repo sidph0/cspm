@@ -2,29 +2,54 @@
   "metadata": {
     "provider": "aws",
     "account_id": "000000000000",
-    "collected_at_utc": "2026-01-01T00:00:00+00:00",
+    "collected_at_utc": "2026-01-02T00:00:00+00:00",
     "regions": ["us-west-1"]
   },
   "aws": {
+    "coverage": {
+      "sts": {
+        "GetCallerIdentity": { "status": "OK" }
+      },
+      "ec2": {
+        "DescribeSecurityGroups": { "status": "OK" }
+      },
+      "s3": {
+        "ListBuckets": { "status": "OK" },
+        "GetBucketLocation": { "status": "OK" },
+        "GetPublicAccessBlock": { "status": "OK" },
+        "GetBucketPolicyStatus": { "status": "OK" },
+        "GetBucketPolicy": { "status": "OK" }
+      }
+    },
     "regions": {
       "us-west-1": {
         "security_groups": [
           {
             "group_id": "sg-demo123",
             "group_name": "demo-open-sg",
-            "description": "Demo SG with open rules",
+            "description": "Demo SG (latest) - SSH widened to world + all traffic open",
             "vpc_id": "vpc-demo123",
             "ip_permissions": [
               {
                 "IpProtocol": "tcp",
                 "FromPort": 22,
                 "ToPort": 22,
-                "IpRanges": [{"CidrIp": "0.0.0.0/0", "Description": "demo open ssh"}],
+                "IpRanges": [
+                  {
+                    "CidrIp": "0.0.0.0/0",
+                    "Description": "demo open ssh to world"
+                  }
+                ],
                 "Ipv6Ranges": []
               },
               {
                 "IpProtocol": "-1",
-                "IpRanges": [{"CidrIp": "0.0.0.0/0", "Description": "demo all traffic"}],
+                "IpRanges": [
+                  {
+                    "CidrIp": "0.0.0.0/0",
+                    "Description": "demo all traffic open"
+                  }
+                ],
                 "Ipv6Ranges": []
               }
             ]
@@ -46,7 +71,9 @@
             }
           },
           "policy_status": {
-            "PolicyStatus": { "IsPublic": true }
+            "PolicyStatus": {
+              "IsPublic": true
+            }
           }
         }
       ]
