@@ -7,6 +7,66 @@ from typing import Any, Optional
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 
+def calculate_coverage_summary(coverage: Optional[dict[str, Any]]) -> dict[str, Any]:
+    """
+    calculate coverage summary score based on coverage data
+    
+    returns dict with:
+    - score (full, partial, limited)
+    - details (list of failed API calls with error info)
+    """
+    if not coverage or not isinstance(coverage, dict):
+        return {
+            "score": "LIMITED",
+            "total_apis": 0,
+            "successful_apis": 0,
+            "failed_apis": 0,
+            "details": [],
+        }
+    
+    total = 0
+    successful = 0
+    failed = 0
+    failed_details: list[dict[str, Any]] = []
+    
+    for service, actions in coverage.items():
+        if not isinstance(actions, dict):
+            continue
+        for action, info in actions.items():
+            total += 1
+            if isinstance(info, dict) and info.get("status") == "OK":
+                successful += 1
+            else:
+                failed += 1
+                failed_details.append({
+                    "service": service,
+                    "action": action,
+                    "error_code": info.get("error_code") if isinstance(info, dict) else "UnknownError",
+                    "message": info.get("message") if isinstance(info, dict) else "Unknown error",
+                })
+    
+    # Determine score:
+    # full - all APIs succeeded (or no APIs tracked but that's unlikely)
+    # partial - some APIs failed but at least 50% succeeded
+    # limited - less than 50% succeeded or critical APIs failed
+    if total == 0:
+        score = "LIMITED"
+    elif failed == 0:
+        score = "FULL"
+    elif successful / total >= 0.5:
+        score = "PARTIAL"
+    else:
+        score = "LIMITED"
+    
+    return {
+        "score": score,
+        "total_apis": total,
+        "successful_apis": successful,
+        "failed_apis": failed,
+        "details": failed_details,
+    }
+
+
 def _safe_slug(text: str) -> str:
     allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.")
     return "".join(ch if ch in allowed else "-" for ch in text)
@@ -97,12 +157,17 @@ def render_html_report(
     ts = _timestamp_for_filename(snapshot)
 
     drift_obj = _wrap_drift_for_template(drift)
+    
+    # calculate coverage summary
+    coverage = snapshot.get("aws", {}).get("coverage") if snapshot.get("aws") else None
+    coverage_summary = calculate_coverage_summary(coverage)
 
     out_html = template.render(
         generated_at=datetime.now().isoformat(timespec="seconds"),
         snapshot=Obj(snapshot),
         findings=[Obj(f) for f in findings],
         drift=drift_obj,  # new drift context
+        coverage_summary=Obj(coverage_summary),  # coverage summary score
     )
 
     project_root = Path(__file__).resolve().parent.parent
