@@ -5,25 +5,36 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Local CSPM Lite Report</title>
   <style>
-    /* basic layout and typography */
     body { font-family: Arial, sans-serif; margin: 24px; }
     .muted { color: #666; }
     .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #eee; font-size: 12px; }
 
-    /* table layout */
     table { width: 100%; border-collapse: collapse; margin-top: 16px; }
     th, td { border: 1px solid #ddd; padding: 8px; vertical-align: top; }
     th { background: #f7f7f7; text-align: left; }
 
-    /* utility classes */
     .right { text-align: right; }
     .mono { font-family: Consolas, monospace; font-size: 12px; }
     .section { margin-top: 24px; }
+
+    /* drift highlighting */
+    .row-new { background: #ffe8e8; }
+    .row-resolved { background: #e8ffea; }
+    .row-increased { background: #fff2e0; }
+    .row-decreased { background: #e8f3ff; }
+
+    /* coverage highlighting */
+    .ok { color: #0a7a0a; font-weight: bold; }
+    .err { color: #b00020; font-weight: bold; }
+    
+    /* coverage score colors */
+    .coverage-full { background-color: #0a7a0a; color: white; font-weight: bold; }
+    .coverage-partial { background-color: #ff9800; color: white; font-weight: bold; }
+    .coverage-limited { background-color: #b00020; color: white; font-weight: bold; }
   </style>
 </head>
 <body>
 
-  <!-- Page header + generation timestamp -->
   <h1>Local CSPM Lite</h1>
   <p class="muted">Generated: <span class="mono">{{ generated_at }}</span></p>
 
@@ -34,14 +45,79 @@
       <li>AWS Account: <span class="mono">{{ snapshot.metadata.account_id }}</span></li>
       <li>Regions: <span class="mono">{{ snapshot.metadata.regions | join(", ") }}</span></li>
       <li>Collected (UTC): <span class="mono">{{ snapshot.metadata.collected_at_utc }}</span></li>
+      {% if coverage_summary %}
+        {% if coverage_summary.score == 'FULL' %}
+          {% set coverage_class = 'coverage-full' %}
+        {% elif coverage_summary.score == 'PARTIAL' %}
+          {% set coverage_class = 'coverage-partial' %}
+        {% else %}
+          {% set coverage_class = 'coverage-limited' %}
+        {% endif %}
+        <li>
+          Coverage: 
+          <span class="pill {{ coverage_class }}">
+            {{ coverage_summary.score }}
+          </span>
+          <span class="muted">
+            ({{ coverage_summary.successful_apis }}/{{ coverage_summary.total_apis }} APIs successful)
+          </span>
+        </li>
+      {% endif %}
     </ul>
   </div>
 
-  <!-- collected inventory overview -->
+  <!-- (new) permissions & coverage -->
+  <div class="section">
+    <h2>Permissions & Coverage</h2>
+
+    {% set cov = snapshot.aws.coverage if snapshot.aws and snapshot.aws.coverage else None %}
+    {% if not cov %}
+      <p class="muted">Coverage data not available (older snapshot format or demo snapshot).</p>
+    {% else %}
+      <p class="muted">
+        This shows which AWS API calls were accessible during the scan. Missing access can reduce scan coverage.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Service</th>
+            <th>Action</th>
+            <th>Status</th>
+            <th>Error</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for service, actions in cov.items() %}
+            {% for action, info in actions.items() %}
+              <tr>
+                <td class="mono">{{ service }}</td>
+                <td class="mono">{{ action }}</td>
+                <td class="mono">
+                  {% if info.status == "OK" %}
+                    <span class="ok">OK</span>
+                  {% else %}
+                    <span class="err">ERROR</span>
+                  {% endif %}
+                </td>
+                <td class="mono">
+                  {% if info.status != "OK" %}
+                    {{ info.error_code }} - {{ info.message }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+  </div>
+
   <div class="section">
     <h2>Collected Inventory</h2>
 
-    <!-- security groups per region -->
     <h3>Security Groups (by region)</h3>
     <table>
       <thead>
@@ -52,16 +128,13 @@
         </tr>
       </thead>
       <tbody>
-        {# Loop over regions collected under snapshot.aws.regions #}
         {% for region, data in snapshot.aws.regions.items() %}
           <tr>
             <td class="mono">{{ region }}</td>
             <td class="right">
-              <!-- If there is a security_groups list, show its length; otherwise 0 -->
               <strong>{{ (data.security_groups | length) if data.security_groups else 0 }}</strong>
             </td>
             <td class="mono">
-              {# Show collector error details when present; otherwise a simple OK #}
               {% if data.error %}
                 ERROR: {{ data.error.type }} - {{ data.error.message }}
               {% else %}
@@ -73,9 +146,7 @@
       </tbody>
     </table>
 
-    <!-- s3 buckets summary -->
     <h3>S3 Buckets</h3>
-    {# Safely resolve buckets; keep behavior identical to previous logic #}
     {% set buckets = snapshot.aws.s3.buckets if snapshot.aws.s3 and snapshot.aws.s3.buckets else [] %}
     <p>Total buckets collected: <strong>{{ buckets | length }}</strong></p>
 
@@ -90,13 +161,11 @@
           </tr>
         </thead>
         <tbody>
-          {# Limit shown rows to first 25 for brevity #}
           {% for b in buckets[:25] %}
             <tr>
               <td class="mono">{{ b.name }}</td>
               <td class="mono">{{ b.region if b.region else "unknown" }}</td>
               <td class="mono">
-                {# public_access_block truthiness indicates presence #}
                 {% if b.public_access_block %}
                   present
                 {% else %}
@@ -104,7 +173,6 @@
                 {% endif %}
               </td>
               <td class="mono">
-                {# policy_status may be nested; print IsPublic when available #}
                 {% if b.policy_status and b.policy_status.PolicyStatus %}
                   IsPublic={{ b.policy_status.PolicyStatus.IsPublic }}
                 {% else %}
@@ -121,40 +189,79 @@
     {% endif %}
   </div>
 
-  <!-- Findings list -->
   <div class="section">
     <h2>Findings ({{ findings | length }})</h2>
 
     {% if findings | length == 0 %}
       <p>No misconfigurations found.</p>
     {% else %}
-      <table>
-        <thead>
-          <tr>
-            <th class="right">Risk</th>
-            <th>Rule</th>
-            <th>Resource</th>
-            <th>Region</th>
-            <th>Evidence</th>
-          </tr>
-        </thead>
-        <tbody>
-          {# One row per finding; fields expected on each `f` object #}
-          {% for f in findings %}
+      {% set evaluated_findings = [] %}
+      {% set not_evaluated_findings = [] %}
+      {% for f in findings %}
+        {% if f.status == "NOT_EVALUATED" %}
+          {% set _ = not_evaluated_findings.append(f) %}
+        {% else %}
+          {% set _ = evaluated_findings.append(f) %}
+        {% endif %}
+      {% endfor %}
+      
+      {% if evaluated_findings | length > 0 %}
+        <h3>Evaluated Findings ({{ evaluated_findings | length }})</h3>
+        <table>
+          <thead>
             <tr>
-              <td class="right"><strong>{{ f.risk_score }}</strong></td>
-              <td class="mono">{{ f.rule_id }}</td>
-              <td class="mono">{{ f.resource_id }}</td>
-              <td class="mono">{{ f.region }}</td>
-              <td class="mono">{{ f.evidence }}</td>
+              <th class="right">Risk</th>
+              <th>Rule</th>
+              <th>Resource</th>
+              <th>Region</th>
+              <th>Evidence</th>
             </tr>
-          {% endfor %}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {% for f in evaluated_findings %}
+              <tr>
+                <td class="right"><strong>{{ f.risk_score }}</strong></td>
+                <td class="mono">{{ f.rule_id }}</td>
+                <td class="mono">{{ f.resource_id }}</td>
+                <td class="mono">{{ f.region }}</td>
+                <td class="mono">{{ f.evidence }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+
+      {% if not_evaluated_findings | length > 0 %}
+        <h3>Not Evaluated ({{ not_evaluated_findings | length }})</h3>
+        <p class="muted">
+          These rules could not be evaluated due to missing AWS permissions. Grant the required permissions to enable evaluation.
+        </p>
+        <table>
+          <thead>
+            <tr>
+              <th>Rule</th>
+              <th>Resource</th>
+              <th>Region</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for f in not_evaluated_findings %}
+              <tr style="background: #fff3cd;">
+                <td class="mono">{{ f.rule_id }}</td>
+                <td class="mono">{{ f.resource_id }}</td>
+                <td class="mono">{{ f.region }}</td>
+                <td class="mono">
+                  <span class="err">Missing permission: {{ f.missing_permission }}</span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
     {% endif %}
   </div>
 
-  <!-- drift section -->
   <div class="section">
     <h2>Drift (vs previous scan)</h2>
 
@@ -188,7 +295,7 @@
           </thead>
           <tbody>
             {% for f in drift.diff.new[:15] %}
-              <tr>
+              <tr class="row-new">
                 <td class="right"><strong>{{ f.risk_score }}</strong></td>
                 <td class="mono">{{ f.rule_id }}</td>
                 <td class="mono">{{ f.resource_id }}</td>
@@ -198,9 +305,6 @@
             {% endfor %}
           </tbody>
         </table>
-        {% if drift.diff.new | length > 15 %}
-          <p class="muted">Showing first 15 new findings.</p>
-        {% endif %}
       {% endif %}
 
       <h3>Resolved Findings</h3>
@@ -218,7 +322,7 @@
           </thead>
           <tbody>
             {% for f in drift.diff.resolved[:15] %}
-              <tr>
+              <tr class="row-resolved">
                 <td class="right"><strong>{{ f.risk_score }}</strong></td>
                 <td class="mono">{{ f.rule_id }}</td>
                 <td class="mono">{{ f.resource_id }}</td>
@@ -227,9 +331,6 @@
             {% endfor %}
           </tbody>
         </table>
-        {% if drift.diff.resolved | length > 15 %}
-          <p class="muted">Showing first 15 resolved findings.</p>
-        {% endif %}
       {% endif %}
 
       <h3>Risk Increased</h3>
@@ -248,7 +349,7 @@
           </thead>
           <tbody>
             {% for x in drift.diff.increased_risk[:15] %}
-              <tr>
+              <tr class="row-increased">
                 <td class="right">{{ x.before_risk }}</td>
                 <td class="right"><strong>{{ x.after_risk }}</strong></td>
                 <td class="mono">{{ x.after.rule_id }}</td>
@@ -258,9 +359,6 @@
             {% endfor %}
           </tbody>
         </table>
-        {% if drift.diff.increased_risk | length > 15 %}
-          <p class="muted">Showing first 15 increased-risk items.</p>
-        {% endif %}
       {% endif %}
 
       <h3>Risk Decreased</h3>
@@ -279,7 +377,7 @@
           </thead>
           <tbody>
             {% for x in drift.diff.decreased_risk[:15] %}
-              <tr>
+              <tr class="row-decreased">
                 <td class="right">{{ x.before_risk }}</td>
                 <td class="right"><strong>{{ x.after_risk }}</strong></td>
                 <td class="mono">{{ x.after.rule_id }}</td>
@@ -289,11 +387,7 @@
             {% endfor %}
           </tbody>
         </table>
-        {% if drift.diff.decreased_risk | length > 15 %}
-          <p class="muted">Showing first 15 decreased-risk items.</p>
-        {% endif %}
       {% endif %}
-
     {% else %}
       <p class="muted">
         Drift is not available yet. Run at least <strong>two scans</strong> to compare changes.
