@@ -31,6 +31,17 @@
     .coverage-full { background-color: #0a7a0a; color: white; font-weight: bold; }
     .coverage-partial { background-color: #ff9800; color: white; font-weight: bold; }
     .coverage-limited { background-color: #b00020; color: white; font-weight: bold; }
+
+    /* remediation styling */
+    .remediation-success { background-color: #e8ffea; }
+    .remediation-skipped { background-color: #fff3cd; }
+    .remediation-failed { background-color: #ffe8e8; }
+    .remediation-dryrun { background-color: #e8f3ff; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    .badge-success { background-color: #0a7a0a; color: white; }
+    .badge-skipped { background-color: #ff9800; color: white; }
+    .badge-failed { background-color: #b00020; color: white; }
+    .badge-dryrun { background-color: #2196f3; color: white; }
   </style>
 </head>
 <body>
@@ -259,6 +270,117 @@
           </tbody>
         </table>
       {% endif %}
+    {% endif %}
+  </div>
+
+  <!-- Remediation Summary Section -->
+  <div class="section">
+    <h2>Remediation Summary</h2>
+
+    {% if remediation %}
+      <p class="muted">
+        Mode: 
+        {% if remediation.dry_run %}
+          <span class="badge badge-dryrun">DRY-RUN</span> (no changes made)
+        {% else %}
+          <span class="badge badge-success">LIVE</span> (changes applied)
+        {% endif %}
+      </p>
+
+      <ul>
+        <li>Eligible findings: <strong>{{ remediation.eligible_count }}</strong></li>
+        <li>Applied: <strong>{{ remediation.applied_count }}</strong></li>
+        <li>Skipped: <strong>{{ remediation.skipped_count }}</strong></li>
+        <li>Failed: <strong>{{ remediation.failed_count }}</strong></li>
+      </ul>
+
+      {% if remediation.applied | length > 0 %}
+        <h3>Applied Remediations</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Rule</th>
+              <th>Resource</th>
+              <th>Action</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in remediation.applied %}
+              <tr class="{% if remediation.dry_run %}remediation-dryrun{% else %}remediation-success{% endif %}">
+                <td>
+                  {% if remediation.dry_run %}
+                    <span class="badge badge-dryrun">DRY-RUN</span>
+                  {% else %}
+                    <span class="badge badge-success">SUCCESS</span>
+                  {% endif %}
+                </td>
+                <td class="mono">{{ r.rule_id }}</td>
+                <td class="mono">{{ r.resource_id }}</td>
+                <td class="mono">{{ r.action }}</td>
+                <td class="mono">{{ r.reason }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+
+      {% if remediation.skipped | length > 0 %}
+        <h3>Skipped Remediations</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Rule</th>
+              <th>Resource</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in remediation.skipped[:20] %}
+              <tr class="remediation-skipped">
+                <td><span class="badge badge-skipped">SKIPPED</span></td>
+                <td class="mono">{{ r.rule_id }}</td>
+                <td class="mono">{{ r.resource_id }}</td>
+                <td class="mono">{{ r.reason }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% if remediation.skipped | length > 20 %}
+          <p class="muted">Showing first 20 of {{ remediation.skipped | length }} skipped remediations.</p>
+        {% endif %}
+      {% endif %}
+
+      {% if remediation.failed | length > 0 %}
+        <h3>Failed Remediations</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Rule</th>
+              <th>Resource</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in remediation.failed %}
+              <tr class="remediation-failed">
+                <td><span class="badge badge-failed">FAILED</span></td>
+                <td class="mono">{{ r.rule_id }}</td>
+                <td class="mono">{{ r.resource_id }}</td>
+                <td class="mono">{{ r.reason }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% endif %}
+
+    {% else %}
+      <p class="muted">
+        Remediation was not requested for this scan. Use <code>--remediate</code> flag to enable auto remediation.
+      </p>
     {% endif %}
   </div>
 
