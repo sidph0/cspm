@@ -130,10 +130,28 @@ def _wrap_drift_for_template(drift: Optional[dict[str, Any]]) -> Optional[Obj]:
     return d
 
 
+def _wrap_remediation_for_template(remediation: Optional[dict[str, Any]]) -> Optional[Obj]:
+    """
+    convert remediation summary dict into obj structure for jinja template
+    """
+    if not isinstance(remediation, dict):
+        return None
+    
+    r = Obj(remediation)
+    
+    # wrap the lists of remediation results
+    for key in ("applied", "skipped", "failed"):
+        items = r.get(key) or []
+        r[key] = [Obj(x) for x in items]
+    
+    return r
+
+
 def render_html_report(
     snapshot: dict[str, Any],
     findings: list[dict[str, Any]],
     drift: Optional[dict[str, Any]] = None,
+    remediation: Optional[dict[str, Any]] = None,
 ) -> str:
     """
     make unique report file to /reports:
@@ -157,6 +175,7 @@ def render_html_report(
     ts = _timestamp_for_filename(snapshot)
 
     drift_obj = _wrap_drift_for_template(drift)
+    remediation_obj = _wrap_remediation_for_template(remediation)
     
     # calculate coverage summary
     coverage = snapshot.get("aws", {}).get("coverage") if snapshot.get("aws") else None
@@ -166,7 +185,8 @@ def render_html_report(
         generated_at=datetime.now().isoformat(timespec="seconds"),
         snapshot=Obj(snapshot),
         findings=[Obj(f) for f in findings],
-        drift=drift_obj,  # new drift context
+        drift=drift_obj,  # drift context
+        remediation=remediation_obj,  # remediation summary
         coverage_summary=Obj(coverage_summary),  # coverage summary score
     )
 
