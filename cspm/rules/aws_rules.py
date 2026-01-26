@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from typing import Any, Optional
 
+from cspm.remediation.base import get_remediation_metadata
+
 
 # known CIDR (IPv4/IPv6) values
 WORLD_IPV4 = "0.0.0.0/0"
@@ -286,6 +288,9 @@ def _make_finding(
     is_public: bool = False,
 ) -> dict[str, Any]:
     # compact finding record consumed by reporting code
+    # includes remediation metadata for auto fix capability
+    remediation_meta = get_remediation_metadata(rule_id)
+    
     return {
         "provider": "aws",
         "rule_id": rule_id,
@@ -296,6 +301,15 @@ def _make_finding(
         "evidence": evidence,
         "is_public": bool(is_public),
         "status": "EVALUATED",  # normal finding
+        "remediation": {
+            "supported": remediation_meta.get("supported", False),
+            "safe": remediation_meta.get("safe", False),
+            "action": remediation_meta.get("action").value if remediation_meta.get("action") else None,
+            "description": remediation_meta.get("description", ""),
+            "requires_permissions": [
+                f"{svc}:{act}" for svc, act in remediation_meta.get("requires_permissions", [])
+            ],
+        },
     }
 
 
@@ -310,6 +324,7 @@ def _make_not_evaluated_finding(
     """
     create finding record for a rule that cant be evaluated due to missing perms
     """
+    # not evaluated findings dont support remediation
     return {
         "provider": "aws",
         "rule_id": rule_id,
@@ -321,6 +336,13 @@ def _make_not_evaluated_finding(
         "is_public": False,
         "status": "NOT_EVALUATED",
         "missing_permission": missing_permission,
+        "remediation": {
+            "supported": False,
+            "safe": False,
+            "action": None,
+            "description": "Cannot remediate: rule not evaluated",
+            "requires_permissions": [],
+        },
     }
 
 
