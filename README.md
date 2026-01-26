@@ -1,7 +1,7 @@
 # Local CSPM Lite
 
-local CSPM lite is a windows based local Cloud Security Posture Management (CSPM) tool.
-It scans AWS cloud configurations, detects common misconfigurations, assigns risk scores, and generates standalone HTML security reports.
+Local CSPM Lite is a Windows based local Cloud Security Posture Management (CSPM) tool.
+It scans AWS cloud configurations, detects common misconfigurations, attempts to fix said misconfigurations (on request), assigns risk scores, and generates standalone HTML security reports.
 
 ---
 
@@ -11,8 +11,9 @@ It scans AWS cloud configurations, detects common misconfigurations, assigns ris
 3. assigns risk scores to findings
 4. saves immutable scan snapshots locally 
 5. detects config drift between scans (new, resolved, and risk changed findings)  
-6. makes timestamped HTML security reports with embedded drift analysis  
-7. allows a demo mode that runs without AWS credentials  
+6. makes timestamped HTML security reports with embedded drift analysis
+7. optionally performs safe & controlled auto remediation  
+8. allows a demo mode that runs without AWS credentials  
 
 ---
 
@@ -28,7 +29,7 @@ It scans AWS cloud configurations, detects common misconfigurations, assigns ris
 - Bucket policy publicly accessible
 ---
 
-## New Updates
+## Drift Detection (Milestone 2)
 
 - Drift Detection 
   Compares the latest scan with the previous snapshot to show:
@@ -46,6 +47,65 @@ It scans AWS cloud configurations, detects common misconfigurations, assigns ris
 - Demo Mode (updated)
   seeds a 'previous' and 'latest' snapshot so drift and risk changes are always visible without AWS access
 
+---
+## Auto Remediation (Milestone 3)
+
+- now supports opt in auto remediation for a limited set of high risk misconfigurations
+
+### Key Principles
+- *Disabled by default* – scanning is read only unless explicitly enabled  
+- *Safe scope only* – no IAM, no destructive changes  
+- *Explainable* – every action is logged / reported  
+- *Permission aware* – remediation is skipped if required permissions are missing  
+
+### Supported Auto Remediations
+**EC2 Security Groups**
+- Remove inbound rules allowing:
+  - SSH (22) from `0.0.0.0/0`
+  - RDP (3389) from `0.0.0.0/0`
+  - All traffic (`IpProtocol = -1`) from `0.0.0.0/0`
+
+**S3 Buckets**
+- Enable Public Access Block (all four flags)
+
+### Dry-Run Mode
+
+```powershell
+--remediate --dry-run
+```
+
+dry run mode:
+- Shows what would be changed
+- Makes no AWS API write calls
+- Write remediation previews into the report
+
+### Applying Remediation
+To apply remediations (real changes):
+
+```powershell
+--remediate
+```
+
+Remediations will:
+- apply only supported / safe fixes
+- Skip unsupported / unsafe findings
+- Skip fixes when required permissions are missing
+- Record applied and skipped actions in the report (with explanations)
+
+### Skipped Remediations
+A remediation may be skipped when:
+- Required AWS permissions are missing
+- The rule is not safe for autofix
+- The target change can't be uniquely identified
+
+---
+
+## Permissions & Coverage Awareness
+
+The tool uses a permissions selfcheck during scans and reports:
+- Which AWS API calls succeeded
+- Which failed (and why)
+- Whether scan coverage is FULL, PARTIAL, or LIMITED
 ---
 
 ## Requirements
@@ -123,10 +183,21 @@ Multiple regions:
 python -m cspm.cli scan --provider aws --regions us-west-1 us-east-1
 ```
 
+### Real AWS Scan with auto remediation
+```powershell
+python -m cspm.cli scan --provider aws --regions us-west-1 --remediate
+```
+
+Dry run preview:
+```powershell
+python -m cspm.cli scan --provider aws --regions us-west-1 --remediate --dry-run
+```
+
 ### Demo Mode (No AWS Required)
 ```powershell
 python -m cspm.cli scan --provider aws --demo
 ```
+note: remediation & dry run flags work on the demo
 
 Demo mode:
 - seeds previous and latest snapshot automatically
@@ -159,6 +230,11 @@ each scan generates a unique & immutable report
 cspm/
   providers/
     aws_collector.py
+  remediation/
+    __init__.py
+    aws_ec2.py
+    aws_s3.py
+    base.py
   reporting/templates/
     report.html
   rules/
@@ -176,6 +252,7 @@ reports/
 snapshots/
 ```
 
+
 ---
 
 ## Design Notes
@@ -183,6 +260,8 @@ snapshots/
 - intentionally local first / CLI driven
 - all cloud access is read only
 - drift aware instead of than snapshot only analysis
+- permissions transparency
+- remediation to attempt to fix misconfigurations
 - pretty simplified scale of real CSPM product architecture
 - demo mode kept in sync with production features
 
