@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Local CSPM Lite Report</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 24px; }
+    .muted { color: #666; }
+    .pill { display: inline-block; padding: 2px 8px; border-radius: 999px; background: #eee; font-size: 12px; }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    th, td { border: 1px solid #ddd; padding: 8px; vertical-align: top; }
+    th { background: #f7f7f7; text-align: left; }
+
+    .right { text-align: right; }
+    .mono { font-family: Consolas, monospace; font-size: 12px; }
+    .section { margin-top: 24px; }
+
+    /* drift highlighting */
+    .row-new { background: #ffe8e8; }
+    .row-resolved { background: #e8ffea; }
+    .row-increased { background: #fff2e0; }
+    .row-decreased { background: #e8f3ff; }
+
+    /* coverage highlighting */
+    .ok { color: #0a7a0a; font-weight: bold; }
+    .err { color: #b00020; font-weight: bold; }
+    
+    /* coverage score colors */
+    .coverage-full { background-color: #0a7a0a; color: white; font-weight: bold; }
+    .coverage-partial { background-color: #ff9800; color: white; font-weight: bold; }
+    .coverage-limited { background-color: #b00020; color: white; font-weight: bold; }
+
+    /* remediation styling */
+    .remediation-success { background-color: #e8ffea; }
+    .remediation-skipped { background-color: #fff3cd; }
+    .remediation-failed { background-color: #ffe8e8; }
+    .remediation-dryrun { background-color: #e8f3ff; }
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+    .badge-success { background-color: #0a7a0a; color: white; }
+    .badge-skipped { background-color: #ff9800; color: white; }
+    .badge-failed { background-color: #b00020; color: white; }
+    .badge-dryrun { background-color: #2196f3; color: white; }
+  </style>
+</head>
+<body>
+
+  <h1>Local CSPM Lite</h1>
+  <p class="muted">Generated: <span class="mono">2026-02-16T13:18:56</span></p>
+
+  <div class="section">
+    <h2>Scan Metadata</h2>
+    <ul>
+      <li>Provider: <span class="pill">aws</span></li>
+      <li>AWS Account: <span class="mono">000000000000</span></li>
+      <li>Regions: <span class="mono">us-west-1</span></li>
+      <li>Collected (UTC): <span class="mono">2026-01-02T00:00:00+00:00</span></li>
+      
+        
+          
+        
+        <li>
+          Coverage: 
+          <span class="pill coverage-full">
+            FULL
+          </span>
+          <span class="muted">
+            (7/7 APIs successful)
+          </span>
+        </li>
+      
+    </ul>
+  </div>
+
+  <!-- (new) permissions & coverage -->
+  <div class="section">
+    <h2>Permissions & Coverage</h2>
+
+    
+    
+      <p class="muted">
+        This shows which AWS API calls were accessible during the scan. Missing access can reduce scan coverage.
+      </p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Service</th>
+            <th>Action</th>
+            <th>Status</th>
+            <th>Error</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+            
+              <tr>
+                <td class="mono">sts</td>
+                <td class="mono">GetCallerIdentity</td>
+                <td class="mono">
+                  
+                    <span class="ok">OK</span>
+                  
+                </td>
+                <td class="mono">
+                  
+                    —
+                  
+                </td>
+              </tr>
+            
+          
+            
+              <tr>
+                <td class="mono">ec2</td>
+                <td class="mono">DescribeSecurityGroups</td>
+                <td class="mono">
+                  
+                    <span class="ok">OK</span>
+                  
+                </td>
+                <td class="mono">
+                  
+                    —
+                  
+                </td>
+              </tr>
+            
+          
+            
+              <tr>
+                <td class="mono">s3</td>
+                <td class="mono">ListBuckets</td>
+                <td class="mono">
+                  
+                    <span class="ok">OK</span>
+                  
+                </td>
+                <td class="mono">
+                  
+                    —
+                  
+                </td>
+              </tr>
+            
+              <tr>
+                <td class="mono">s3</td>
+                <td class="mono">GetBucketLocation</td>
+                <td class="mono">
+                  
+                    <span class="ok">OK</span>
+                  
+                </td>
+                <td class="mono">
+                  
+                    —
+                  
+                </td>
+              </tr>
+            
+              <tr>
+                <td class="mono">s3</td>
+                <td class="mono">GetPublicAccessBlock</td>
+                <td class="mono">
+                  
+                    <span class="ok">OK</span>
+                  
+                </td>
+                <td class="mono">
+                  
+                    —
+                  
+                </td>
+              </tr>
+            
+              <tr>
+                <td class="mono">s3</td>
+                <td class="mono">GetBucketPolicyStatus</td>
+                <td class="mono">
+                  
+                    <span class="ok">OK</span>
+                  
+                </td>
+                <td class="mono">
+                  
+                    —
+                  
+                </td>
+              </tr>
+            
+              <tr>
+                <td class="mono">s3</td>
+                <td class="mono">GetBucketPolicy</td>
+                <td class="mono">
+                  
+                    <span class="ok">OK</span>
+                  
+                </td>
+                <td class="mono">
+                  
+                    —
+                  
+                </td>
+              </tr>
+            
+          
+        </tbody>
+      </table>
+    
+  </div>
+
+  <div class="section">
+    <h2>Collected Inventory</h2>
+
+    <h3>Security Groups (by region)</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Region</th>
+          <th class="right">Security Groups</th>
+          <th>Collector Notes</th>
+        </tr>
+      </thead>
+      <tbody>
+        
+          <tr>
+            <td class="mono">us-west-1</td>
+            <td class="right">
+              <strong>1</strong>
+            </td>
+            <td class="mono">
+              
+                OK
+              
+            </td>
+          </tr>
+        
+      </tbody>
+    </table>
+
+    <h3>S3 Buckets</h3>
+    
+    <p>Total buckets collected: <strong>1</strong></p>
+
+    
+      <table>
+        <thead>
+          <tr>
+            <th>Bucket</th>
+            <th>Region</th>
+            <th>Public Access Block</th>
+            <th>Policy Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          
+            <tr>
+              <td class="mono">demo-public-bucket</td>
+              <td class="mono">us-west-1</td>
+              <td class="mono">
+                
+                  present
+                
+              </td>
+              <td class="mono">
+                
+                  IsPublic=True
+                
+              </td>
+            </tr>
+          
+        </tbody>
+      </table>
+      
+    
+  </div>
+
+  <div class="section">
+    <h2>Findings (6)</h2>
+
+    
+      
+      
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+        
+          
+        
+      
+      
+      
+        <h3>Evaluated Findings (6)</h3>
+        <table>
+          <thead>
+            <tr>
+              <th class="right">Risk</th>
+              <th>Rule</th>
+              <th>Resource</th>
+              <th>Region</th>
+              <th>Evidence</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+              <tr>
+                <td class="right"><strong>100</strong></td>
+                <td class="mono">AWS_SG_INGRESS_SSH_WORLD</td>
+                <td class="mono">sg-demo123</td>
+                <td class="mono">us-west-1</td>
+                <td class="mono">0.0.0.0/0 allows port 22 (tcp) | demo open ssh to world</td>
+              </tr>
+            
+              <tr>
+                <td class="right"><strong>100</strong></td>
+                <td class="mono">AWS_SG_INGRESS_RDP_WORLD</td>
+                <td class="mono">sg-demo123</td>
+                <td class="mono">us-west-1</td>
+                <td class="mono">0.0.0.0/0 allows all ports (-1) | demo all traffic open</td>
+              </tr>
+            
+              <tr>
+                <td class="right"><strong>100</strong></td>
+                <td class="mono">AWS_SG_INGRESS_ALL_WORLD</td>
+                <td class="mono">sg-demo123</td>
+                <td class="mono">us-west-1</td>
+                <td class="mono">0.0.0.0/0 allows all ports (-1) | demo all traffic open</td>
+              </tr>
+            
+              <tr>
+                <td class="right"><strong>90</strong></td>
+                <td class="mono">AWS_SG_INGRESS_SSH_ANY</td>
+                <td class="mono">sg-demo123</td>
+                <td class="mono">us-west-1</td>
+                <td class="mono">0.0.0.0/0 allows port 22 (tcp) | demo open ssh to world (cidr=0.0.0.0/0)</td>
+              </tr>
+            
+              <tr>
+                <td class="right"><strong>85</strong></td>
+                <td class="mono">AWS_S3_BUCKET_POLICY_PUBLIC</td>
+                <td class="mono">demo-public-bucket</td>
+                <td class="mono">us-west-1</td>
+                <td class="mono">Bucket policy status indicates IsPublic=True</td>
+              </tr>
+            
+              <tr>
+                <td class="right"><strong>80</strong></td>
+                <td class="mono">AWS_S3_PUBLIC_ACCESS_BLOCK_DISABLED</td>
+                <td class="mono">demo-public-bucket</td>
+                <td class="mono">us-west-1</td>
+                <td class="mono">PublicAccessBlock not fully enabled: BlockPublicAcls=False, IgnorePublicAcls=False, BlockPublicPolicy=False, RestrictPublicBuckets=False</td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+
+      
+    
+  </div>
+
+  <!-- Remediation Summary Section -->
+  <div class="section">
+    <h2>Remediation Summary</h2>
+
+    
+      <p class="muted">
+        Mode: 
+        
+          <span class="badge badge-success">LIVE</span> (changes applied)
+        
+      </p>
+
+      <ul>
+        <li>Eligible findings: <strong>4</strong></li>
+        <li>Applied: <strong>4</strong></li>
+        <li>Skipped: <strong>2</strong></li>
+        <li>Failed: <strong>0</strong></li>
+      </ul>
+
+      
+        <h3>Applied Remediations</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Rule</th>
+              <th>Resource</th>
+              <th>Action</th>
+              <th>Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+              <tr class="remediation-success">
+                <td>
+                  
+                    <span class="badge badge-success">SUCCESS</span>
+                  
+                </td>
+                <td class="mono">AWS_SG_INGRESS_SSH_WORLD</td>
+                <td class="mono">sg-demo123</td>
+                <td class="mono">REMOVE_INGRESS_RULE</td>
+                <td class="mono">[DEMO] Revoked tcp port 22 from 0.0.0.0/0 on sg-demo123</td>
+              </tr>
+            
+              <tr class="remediation-success">
+                <td>
+                  
+                    <span class="badge badge-success">SUCCESS</span>
+                  
+                </td>
+                <td class="mono">AWS_SG_INGRESS_RDP_WORLD</td>
+                <td class="mono">sg-demo123</td>
+                <td class="mono">REMOVE_INGRESS_RULE</td>
+                <td class="mono">[DEMO] Revoked tcp port 3389 from 0.0.0.0/0 on sg-demo123</td>
+              </tr>
+            
+              <tr class="remediation-success">
+                <td>
+                  
+                    <span class="badge badge-success">SUCCESS</span>
+                  
+                </td>
+                <td class="mono">AWS_SG_INGRESS_ALL_WORLD</td>
+                <td class="mono">sg-demo123</td>
+                <td class="mono">REMOVE_INGRESS_RULE</td>
+                <td class="mono">[DEMO] Revoked -1 port all from 0.0.0.0/0 on sg-demo123</td>
+              </tr>
+            
+              <tr class="remediation-success">
+                <td>
+                  
+                    <span class="badge badge-success">SUCCESS</span>
+                  
+                </td>
+                <td class="mono">AWS_S3_PUBLIC_ACCESS_BLOCK_DISABLED</td>
+                <td class="mono">demo-public-bucket</td>
+                <td class="mono">ENABLE_PUBLIC_ACCESS_BLOCK</td>
+                <td class="mono">[DEMO] Enabled Public Access Block on demo-public-bucket</td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+
+      
+        <h3>Skipped Remediations</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Rule</th>
+              <th>Resource</th>
+              <th>Reason</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+              <tr class="remediation-skipped">
+                <td><span class="badge badge-skipped">SKIPPED</span></td>
+                <td class="mono">AWS_SG_INGRESS_SSH_ANY</td>
+                <td class="mono">sg-demo123</td>
+                <td class="mono">SSH to any CIDR - requires manual review</td>
+              </tr>
+            
+              <tr class="remediation-skipped">
+                <td><span class="badge badge-skipped">SKIPPED</span></td>
+                <td class="mono">AWS_S3_BUCKET_POLICY_PUBLIC</td>
+                <td class="mono">demo-public-bucket</td>
+                <td class="mono">Bucket policy changes not supported for auto-fix (business logic)</td>
+              </tr>
+            
+          </tbody>
+        </table>
+        
+      
+
+      
+
+    
+  </div>
+
+  <div class="section">
+    <h2>Drift (vs previous scan)</h2>
+
+    
+      <p class="muted">
+        Previous snapshot: <span class="mono">C:\Users\Sid-Gaming\Downloads\local-cspm-lite\snapshots\aws\000000000000\20260101T000000Z.json</span><br />
+        Latest snapshot: <span class="mono">C:\Users\Sid-Gaming\Downloads\local-cspm-lite\snapshots\aws\000000000000\20260102T000000Z.json</span>
+      </p>
+
+      <ul>
+        <li>New findings: <strong>5</strong></li>
+        <li>Resolved findings: <strong>0</strong></li>
+        <li>Persisting findings: <strong>1</strong></li>
+        <li>Risk increased: <strong>1</strong></li>
+        <li>Risk decreased: <strong>0</strong></li>
+      </ul>
+
+      <h3>New Findings</h3>
+      
+        <table>
+          <thead>
+            <tr>
+              <th class="right">Risk</th>
+              <th>Rule</th>
+              <th>Resource</th>
+              <th>Region</th>
+              <th>Evidence</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+              <tr class="row-new">
+                <td class="right"><strong>100</strong></td>
+                <td class="mono">AWS_SG_INGRESS_ALL_WORLD</td>
+                <td class="mono">sg-demo123</td>
+                <td class="mono">us-west-1</td>
+                <td class="mono">0.0.0.0/0 allows all ports (-1) | demo all traffic open</td>
+              </tr>
+            
+              <tr class="row-new">
+                <td class="right"><strong>100</strong></td>
+                <td class="mono">AWS_SG_INGRESS_RDP_WORLD</td>
+                <td class="mono">sg-demo123</td>
+                <td class="mono">us-west-1</td>
+                <td class="mono">0.0.0.0/0 allows all ports (-1) | demo all traffic open</td>
+              </tr>
+            
+              <tr class="row-new">
+                <td class="right"><strong>100</strong></td>
+                <td class="mono">AWS_SG_INGRESS_SSH_WORLD</td>
+                <td class="mono">sg-demo123</td>
+                <td class="mono">us-west-1</td>
+                <td class="mono">0.0.0.0/0 allows port 22 (tcp) | demo open ssh to world</td>
+              </tr>
+            
+              <tr class="row-new">
+                <td class="right"><strong>85</strong></td>
+                <td class="mono">AWS_S3_BUCKET_POLICY_PUBLIC</td>
+                <td class="mono">demo-public-bucket</td>
+                <td class="mono">us-west-1</td>
+                <td class="mono">Bucket policy status indicates IsPublic=True</td>
+              </tr>
+            
+              <tr class="row-new">
+                <td class="right"><strong>80</strong></td>
+                <td class="mono">AWS_S3_PUBLIC_ACCESS_BLOCK_DISABLED</td>
+                <td class="mono">demo-public-bucket</td>
+                <td class="mono">us-west-1</td>
+                <td class="mono">PublicAccessBlock not fully enabled: BlockPublicAcls=False, IgnorePublicAcls=False, BlockPublicPolicy=False, RestrictPublicBuckets=False</td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+
+      <h3>Resolved Findings</h3>
+      
+        <p>No resolved findings.</p>
+      
+
+      <h3>Risk Increased</h3>
+      
+        <table>
+          <thead>
+            <tr>
+              <th class="right">Before</th>
+              <th class="right">After</th>
+              <th>Rule</th>
+              <th>Resource</th>
+              <th>Region</th>
+            </tr>
+          </thead>
+          <tbody>
+            
+              <tr class="row-increased">
+                <td class="right">70</td>
+                <td class="right"><strong>90</strong></td>
+                <td class="mono">AWS_SG_INGRESS_SSH_ANY</td>
+                <td class="mono">sg-demo123</td>
+                <td class="mono">us-west-1</td>
+              </tr>
+            
+          </tbody>
+        </table>
+      
+
+      <h3>Risk Decreased</h3>
+      
+        <p>No decreased-risk findings.</p>
+      
+    
+  </div>
+
+</body>
+</html>
