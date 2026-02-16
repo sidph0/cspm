@@ -17,6 +17,10 @@ It scans AWS cloud configurations, detects common misconfigurations, attempts to
 
 ---
 
+## Demo Output 
+(remediation on)
+[CSPM Demo](https://sidph0.github.io/cspm/)
+
 ## AWS Security Group Checks
 
 - SSH (port 22) open to any CIDR
